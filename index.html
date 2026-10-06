@@ -69,7 +69,7 @@
       margin: 0 auto;
     }
 
-    /* Top Header */
+    /* Top Sticky Header */
     header.site-header {
       width: 100%;
       background: rgba(250, 247, 242, 0.92);
@@ -183,7 +183,7 @@
       box-shadow: 0 3px 12px rgba(42, 36, 33, 0.08);
     }
 
-    /* Filters & Controls */
+    /* Filters Section */
     .filter-section {
       display: flex;
       flex-direction: column;
@@ -673,6 +673,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
 
     .cart-title {
@@ -729,7 +730,7 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
     .form-group {
@@ -779,6 +780,59 @@
       color: var(--text-main);
       cursor: pointer;
       white-space: nowrap;
+    }
+
+    /* Instant Detection Preview Box */
+    .auto-preview-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .preview-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background: #FFFFFF;
+      flex-shrink: 0;
+    }
+
+    .preview-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .preview-title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
     }
 
     .form-grid-2 {
@@ -967,7 +1021,7 @@
           <div class="subtotal-label">Subtotal</div>
           <div class="subtotal-amount" id="cartSubtotalAmount">$0.00</div>
         </div>
-        <div style="font-size: 12px; color: var(--text-muted); text-align: center;">Tap any item to checkout directly at the retailer</div>
+        <div style="font-size: 12px; color: var(--text-muted); text-align: center;">Tap any item to checkout directly on that product's page</div>
       </div>
     </div>
   </div>
@@ -983,14 +1037,27 @@
       <form id="itemForm" class="form-scroll-body" onsubmit="handleSaveItem(event)">
         <input type="hidden" id="editItemId" value="">
 
-        <!-- URL Quick Importer -->
+        <!-- URL Quick Importer with Auto-Paste Detect -->
         <div class="form-group">
           <label class="form-label">Product Link / URL</label>
           <div class="input-with-button">
-            <input type="url" class="form-input" id="itemUrl" placeholder="https://www.aritzia.com/..." required>
+            <input type="url" class="form-input" id="itemUrl" placeholder="Paste link (Aritzia, Zara, Sephora...)" required>
             <button type="button" class="btn-secondary" id="fetchUrlBtn" onclick="autoFetchUrlMetadata()">Auto-Fill</button>
           </div>
-          <span style="font-size: 11px; color: var(--text-light);">Paste URL and tap Auto-Fill to detect store, image & details.</span>
+          <span style="font-size: 11px; color: var(--text-light);" id="autoDetectHelp">✨ Automatically detects name, price, store, image & category on paste.</span>
+        </div>
+
+        <!-- Live Detected Preview Card -->
+        <div class="auto-preview-card" id="autoPreviewBox" style="display: none;">
+          <img id="previewImg" class="preview-thumb" src="" alt="Product">
+          <div class="preview-info">
+            <div id="previewTitle" class="preview-title">Product Name</div>
+            <div class="preview-meta">
+              <span id="previewBrand" style="font-weight: 600; color: var(--accent-rose);">Store</span>
+              <span id="previewPrice" style="font-weight: 600; color: var(--text-main);">$0.00</span>
+              <span id="previewCategoryBadge" class="tag-chip" style="font-size: 10px; padding: 2px 8px;">Category</span>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -998,18 +1065,39 @@
           <input type="text" class="form-input" id="itemTitle" placeholder="e.g. Slouch Wool Coat" required>
         </div>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label class="form-label">Brand / Retailer</label>
-            <input type="text" class="form-input" id="itemBrand" placeholder="e.g. Aritzia, Zara, Sephora" required>
+        <div class="form-group">
+          <label class="form-label">Brand / Retailer</label>
+          <input type="text" class="form-input" id="itemBrand" placeholder="e.g. Aritzia, Zara, Sephora" required>
+        </div>
+
+        <!-- Product Image Section (Auto-Detected or iPhone Photos) -->
+        <div class="form-group">
+          <label class="form-label">Product Image</label>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" class="btn-secondary" style="flex: 1; padding: 13px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;" onclick="document.getElementById('imageFileInput').click()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>Choose from Photos / Camera</span>
+            </button>
+            <button type="button" class="btn-secondary" style="padding: 13px 16px;" onclick="pasteImageFromClipboard()" title="Paste Image from Clipboard">
+              📋 Paste
+            </button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Image URL</label>
-            <input type="url" class="form-input" id="itemImage" placeholder="https://image-url.jpg">
+          <input type="file" id="imageFileInput" accept="image/*" style="display: none;" onchange="handleImageFileUpload(event)">
+          <input type="hidden" id="itemImage" value="">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+            <span style="font-size: 11px; color: var(--text-light);">Auto-fills when you paste a link, or pick from iPhone Photos.</span>
+            <button type="button" class="btn-text-subtle" style="font-size: 11px;" onclick="toggleManualImageUrl()">Edit image link manually</button>
+          </div>
+          <div id="manualImageUrlWrap" style="display: none; margin-top: 8px;">
+            <input type="url" class="form-input" id="manualImageInput" placeholder="https://image-url.jpg" oninput="document.getElementById('itemImage').value = this.value; updateModalPreviewCard();">
           </div>
         </div>
 
-        <!-- Pricing with Sale Toggle -->
+        <!-- Pricing with Sale Option -->
         <div class="form-grid-2">
           <div class="form-group">
             <label class="form-label">Price ($)</label>
@@ -1084,12 +1172,52 @@
       Home: ['Decor', 'Bedding', 'Candles', 'Kitchen']
     };
 
+    const KNOWN_BRANDS = {
+      'aritzia.com': 'Aritzia',
+      'zara.com': 'Zara',
+      'sephora.com': 'Sephora',
+      'revolve.com': 'Revolve',
+      'nordstrom.com': 'Nordstrom',
+      'abercrombie.com': 'Abercrombie & Fitch',
+      'aloyoga.com': 'Alo Yoga',
+      'lululemon.com': 'Lululemon',
+      'skims.com': 'SKIMS',
+      'thereformation.com': 'Reformation',
+      'mejuri.com': 'Mejuri',
+      'staud.clothing': 'Staud',
+      'anthropologie.com': 'Anthropologie',
+      'freepeople.com': 'Free People',
+      'hm.com': 'H&M',
+      'mango.com': 'Mango',
+      'cos.com': 'COS',
+      'ssense.com': 'SSENSE',
+      'net-a-porter.com': 'NET-A-PORTER',
+      'amazon.com': 'Amazon',
+      'target.com': 'Target',
+      'ulta.com': 'Ulta Beauty',
+      'dior.com': 'Dior',
+      'chanel.com': 'Chanel',
+      'gucci.com': 'Gucci',
+      'prada.com': 'Prada',
+      'loewe.com': 'Loewe',
+      'bottegaveneta.com': 'Bottega Veneta',
+      'urbanoutfitters.com': 'Urban Outfitters',
+      'madewell.com': 'Madewell',
+      'everlane.com': 'Everlane',
+      'princesspolly.com': 'Princess Polly',
+      'houseofcb.com': 'House of CB',
+      'stevemadden.com': 'Steve Madden',
+      'ugg.com': 'UGG',
+      'skinceuticals.com': 'SkinCeuticals',
+      'glossier.com': 'Glossier'
+    };
+
     const DEFAULT_SEED_ITEMS = [
       {
         id: 'seed-1',
         title: 'The Slouch Wool-Cashmere Coat',
         brand: 'Aritzia',
-        url: 'https://www.aritzia.com',
+        url: 'https://www.aritzia.com/us/en/product/the-slouch-coat/102528.html',
         image: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?q=80&w=800&auto=format&fit=crop',
         price: 398.00,
         salePrice: 320.00,
@@ -1106,7 +1234,7 @@
         id: 'seed-2',
         title: 'Baguette Leather Shoulder Bag',
         brand: 'Staud',
-        url: 'https://staud.clothing',
+        url: 'https://staud.clothing/products/tommy-bag-tan',
         image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop',
         price: 295.00,
         salePrice: null,
@@ -1123,7 +1251,7 @@
         id: 'seed-3',
         title: 'Croissant Dôme Ring in 14k Gold',
         brand: 'Mejuri',
-        url: 'https://mejuri.com',
+        url: 'https://mejuri.com/shop/products/croissant-dome-ring',
         image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=800&auto=format&fit=crop',
         price: 78.00,
         salePrice: null,
@@ -1140,7 +1268,7 @@
         id: 'seed-4',
         title: 'Retro 550 Neutral Sneakers',
         brand: 'New Balance',
-        url: 'https://newbalance.com',
+        url: 'https://www.newbalance.com/pd/550/BB550V1-41982.html',
         image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=800&auto=format&fit=crop',
         price: 110.00,
         salePrice: 89.00,
@@ -1175,6 +1303,7 @@
       }
       updateBrandFilterOptions();
       updateFormSubcategories();
+      setupAutoPasteListener();
       render();
     }
 
@@ -1286,6 +1415,331 @@
       subSelect.innerHTML = list.map(s => `<option value="${s}">${s}</option>`).join('');
     }
 
+    /* Intelligent Brand Detection from Hostname */
+    function detectBrandFromUrl(urlStr) {
+      try {
+        const u = new URL(urlStr);
+        const host = u.hostname.toLowerCase().replace(/^www\./, '');
+        for (const [domain, name] of Object.entries(KNOWN_BRANDS)) {
+          if (host.includes(domain)) return name;
+        }
+        const parts = host.split('.');
+        if (parts.length > 0 && parts[0]) {
+          return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    /* Smart Category & Subcategory Detection */
+    function detectCategoryAndSubcategory(text, urlStr) {
+      const combined = (text + ' ' + urlStr).toLowerCase();
+      
+      if (/coat|jacket|blazer|parka|trench|bomber|puffer|vest|windbreaker/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Outerwear' };
+      }
+      if (/dress|gown|maxi|mini dress|midi dress|slip dress|romper|jumpsuit/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Dresses' };
+      }
+      if (/pant|jean|trouser|skirt|short|legging|cargo|denim/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Bottoms' };
+      }
+      if (/sweater|cardigan|knit|cashmere|hoodie|pullover|crewneck/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Knitwear' };
+      }
+      if (/top|shirt|blouse|tee|tank|corset|bodysuit|cami|halter/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Tops' };
+      }
+      if (/lounge|pajama|pyjama|robe|sweatpant|sleepwear/.test(combined)) {
+        return { category: 'Clothing', subcategory: 'Loungewear' };
+      }
+      if (/heel|pump|stiletto|mule|wedge|slingback/.test(combined)) {
+        return { category: 'Shoes', subcategory: 'Heels' };
+      }
+      if (/sneaker|trainer|runner|running shoe/.test(combined)) {
+        return { category: 'Shoes', subcategory: 'Sneakers' };
+      }
+      if (/boot|bootie|chelsea/.test(combined)) {
+        return { category: 'Shoes', subcategory: 'Boots' };
+      }
+      if (/sandal|slide|flip flop|espadrille/.test(combined)) {
+        return { category: 'Shoes', subcategory: 'Sandals' };
+      }
+      if (/flat|loafer|ballet|mary jane/.test(combined)) {
+        return { category: 'Shoes', subcategory: 'Flats' };
+      }
+      if (/ring|band/.test(combined)) return { category: 'Jewelry', subcategory: 'Rings' };
+      if (/necklace|pendant|choker|chain/.test(combined)) return { category: 'Jewelry', subcategory: 'Necklaces' };
+      if (/earring|hoop|stud/.test(combined)) return { category: 'Jewelry', subcategory: 'Earrings' };
+      if (/bracelet|bangle|cuff/.test(combined)) return { category: 'Jewelry', subcategory: 'Bracelets' };
+      if (/tote|shoulder bag|baguette|hobo bag/.test(combined)) return { category: 'Bags', subcategory: 'Shoulder Bags' };
+      if (/crossbody|bucket bag/.test(combined)) return { category: 'Bags', subcategory: 'Crossbody' };
+      if (/clutch|pouch/.test(combined)) return { category: 'Bags', subcategory: 'Clutches' };
+      if (/bag|handbag|backpack|purse/.test(combined)) return { category: 'Bags', subcategory: 'Shoulder Bags' };
+      if (/serum|moisturizer|cleanser|cream|sunscreen|spf|toner|mask/.test(combined)) return { category: 'Beauty', subcategory: 'Skincare' };
+      if (/lipstick|lip gloss|lip oil|mascara|blush|foundation|concealer|powder|bronzer/.test(combined)) return { category: 'Beauty', subcategory: 'Makeup' };
+      if (/perfume|eau de parfum|fragrance|cologne|scent/.test(combined)) return { category: 'Beauty', subcategory: 'Fragrance' };
+      if (/shampoo|conditioner|hair oil|hair mask|haircare/.test(combined)) return { category: 'Beauty', subcategory: 'Haircare' };
+      if (/sunglasses|sunnies|shades|belt|scarf|hat|cap|beanie/.test(combined)) return { category: 'Accessories', subcategory: 'Sunglasses' };
+      if (/candle|diffuser|blanket|throw|vase|pillow|mug|decor/.test(combined)) return { category: 'Home', subcategory: 'Decor' };
+
+      return null;
+    }
+
+    /* Price Extraction from Strings / Meta */
+    function extractPricesFromText(text) {
+      if (!text) return { price: null, salePrice: null };
+      const matches = [];
+      const regex = /(?:USD|\$)\s*([0-9]+(?:\.[0-9]{2})?)/gi;
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        const val = parseFloat(m[1]);
+        if (val > 0 && val < 50000 && !matches.includes(val)) {
+          matches.push(val);
+        }
+      }
+      if (matches.length === 1) {
+        return { price: matches[0], salePrice: null };
+      } else if (matches.length >= 2) {
+        const sorted = [...matches].sort((a, b) => a - b);
+        return { price: sorted[sorted.length - 1], salePrice: sorted[0] };
+      }
+      return { price: null, salePrice: null };
+    }
+
+    /* Clean Title Tag */
+    function cleanTitleString(title) {
+      if (!title) return '';
+      let clean = title.split('|')[0].split(' - ')[0].trim();
+      clean = clean.replace(/\s*(Official Site|Free Shipping|Sale|Online Store).*$/i, '').trim();
+      return clean;
+    }
+
+    /* Auto-Trigger on Paste */
+    function setupAutoPasteListener() {
+      const input = document.getElementById('itemUrl');
+      if (!input) return;
+
+      input.addEventListener('paste', () => {
+        setTimeout(autoFetchUrlMetadata, 150);
+      });
+
+      input.addEventListener('change', () => {
+        if (input.value.trim().startsWith('http')) {
+          autoFetchUrlMetadata();
+        }
+      });
+    }
+
+    /* URL Metadata Auto-Fetch Engine */
+    async function autoFetchUrlMetadata() {
+      const urlInput = document.getElementById('itemUrl');
+      const fetchBtn = document.getElementById('fetchUrlBtn');
+      const rawUrl = urlInput.value.trim();
+
+      if (!rawUrl || !rawUrl.startsWith('http')) return;
+
+      fetchBtn.textContent = 'Detecting...';
+      fetchBtn.disabled = true;
+
+      // 1. Instant Brand Detection from URL
+      const detectedBrand = detectBrandFromUrl(rawUrl);
+      if (detectedBrand) {
+        document.getElementById('itemBrand').value = detectedBrand;
+      }
+
+      // 2. Initial Category Guess from URL slug
+      const slugGuess = detectCategoryAndSubcategory('', rawUrl);
+      if (slugGuess) {
+        document.getElementById('formCategory').value = slugGuess.category;
+        updateFormSubcategories();
+        if (slugGuess.subcategory) {
+          document.getElementById('formSubcategory').value = slugGuess.subcategory;
+        }
+      }
+
+      try {
+        const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(rawUrl)}`);
+        const json = await response.json();
+
+        if (json.status === 'success' && json.data) {
+          const d = json.data;
+
+          // Title
+          if (d.title) {
+            const cleanTitle = cleanTitleString(d.title);
+            document.getElementById('itemTitle').value = cleanTitle;
+
+            // Refine category using Title
+            const titleGuess = detectCategoryAndSubcategory(cleanTitle, rawUrl);
+            if (titleGuess) {
+              document.getElementById('formCategory').value = titleGuess.category;
+              updateFormSubcategories();
+              if (titleGuess.subcategory) {
+                document.getElementById('formSubcategory').value = titleGuess.subcategory;
+              }
+            }
+          }
+
+          // Brand from publisher if not detected
+          if (d.publisher && !detectedBrand) {
+            document.getElementById('itemBrand').value = d.publisher;
+          }
+
+          // Image
+          if (d.image && d.image.url) {
+            document.getElementById('itemImage').value = d.image.url;
+          }
+
+          // Price Detection (Checks description and title)
+          const priceScanText = (d.title || '') + ' ' + (d.description || '');
+          const extractedPrices = extractPricesFromText(priceScanText);
+
+          if (extractedPrices.price) {
+            document.getElementById('itemPrice').value = extractedPrices.price.toFixed(2);
+            if (extractedPrices.salePrice) {
+              document.getElementById('itemSalePrice').value = extractedPrices.salePrice.toFixed(2);
+            }
+          }
+
+          // Show live preview card
+          updateModalPreviewCard();
+          showToast('✨ Auto-detected product details!');
+        } else {
+          showToast('Store identified. Complete price or details.');
+        }
+      } catch (err) {
+        showToast('Store identified. Please fill in price.');
+      } finally {
+        fetchBtn.textContent = 'Auto-Fill';
+        fetchBtn.disabled = false;
+        updateModalPreviewCard();
+      }
+    }
+
+    function updateModalPreviewCard() {
+      const box = document.getElementById('autoPreviewBox');
+      const title = document.getElementById('itemTitle').value.trim();
+      const brand = document.getElementById('itemBrand').value.trim();
+      const price = document.getElementById('itemPrice').value.trim();
+      const img = document.getElementById('itemImage').value.trim();
+      const cat = document.getElementById('formCategory').value;
+
+      if (title || img || price) {
+        box.style.display = 'flex';
+        document.getElementById('previewTitle').textContent = title || 'New Wishlist Item';
+        document.getElementById('previewBrand').textContent = brand || 'Store';
+        document.getElementById('previewPrice').textContent = price ? '$' + parseFloat(price).toFixed(2) : '';
+        document.getElementById('previewCategoryBadge').textContent = cat;
+        document.getElementById('previewImg').src = img || 'https://via.placeholder.com/150?text=Item';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+
+    // Manual Image URL Toggle
+    function toggleManualImageUrl() {
+      const wrap = document.getElementById('manualImageUrlWrap');
+      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+      if (wrap.style.display === 'block') {
+        document.getElementById('manualImageInput').value = document.getElementById('itemImage').value;
+      }
+    }
+
+    // Photo Upload from iPhone Camera Roll / Files
+    function handleImageFileUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      processImageFile(file);
+    }
+
+    function processImageFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please choose an image file.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          // Resize image to max 800px to keep localStorage fast and lightweight
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          document.getElementById('itemImage').value = compressed;
+          updateModalPreviewCard();
+          showToast('📸 Photo added from Camera Roll!');
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Paste Image from Clipboard (Screenshots or Copied Images)
+    async function pasteImageFromClipboard() {
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+          showToast('Paste directly using iPhone keyboard or choose from Photos');
+          return;
+        }
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          const imageType = item.types.find(type => type.startsWith('image/'));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            processImageFile(blob);
+            return;
+          }
+        }
+        showToast('No image found on clipboard. Copy an image first!');
+      } catch (err) {
+        showToast('Tip: Use "Choose from Photos" on iPhone');
+      }
+    }
+
+    // Listen for paste anywhere in the modal
+    document.addEventListener('paste', (e) => {
+      const modal = document.getElementById('itemModalOverlay');
+      if (!modal.classList.contains('active')) return;
+
+      if (e.clipboardData && e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            processImageFile(blob);
+            break;
+          }
+        }
+      }
+    });
+
+    function formatExactProductUrl(url) {
+      if (!url) return '#';
+      url = url.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return 'https://' + url;
+      }
+      return url;
+    }
+
     function render() {
       const container = document.getElementById('itemsList');
       const emptyState = document.getElementById('emptyState');
@@ -1344,6 +1798,8 @@
           heartsHtml += `<span class="heart-icon ${h <= (item.desire || 5) ? 'filled' : ''}">♥</span>`;
         }
 
+        const directLink = formatExactProductUrl(item.url);
+
         return `
           <article class="item-card" data-id="${item.id}">
             <div class="card-img-wrap">
@@ -1381,7 +1837,7 @@
 
               <div class="card-actions">
                 <div class="action-row-primary">
-                  <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-luxury btn-shop">Shop Link ↗</a>
+                  <a href="${directLink}" target="_blank" rel="noopener noreferrer" class="btn-luxury btn-shop">Shop Link ↗</a>
                   ${!item.purchased ? `
                     <button class="btn-luxury btn-cart ${item.inCart ? 'in-cart' : ''}" onclick="toggleCart('${item.id}')">
                       ${item.inCart ? '✓ In Cart' : '+ Add to Cart'}
@@ -1476,82 +1932,40 @@
       container.innerHTML = cartItems.map(item => {
         const isSale = item.salePrice && Number(item.salePrice) < Number(item.price);
         const p = isSale ? Number(item.salePrice) : Number(item.price);
+        const directLink = formatExactProductUrl(item.url);
 
         return `
           <div class="cart-item-row">
-            <img src="${item.image || 'https://via.placeholder.com/150?text=Item'}" alt="${item.title}" class="cart-thumb" onerror="this.src='https://via.placeholder.com/150?text=Item'">
+            <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; flex-shrink: 0;">
+              <img src="${item.image || 'https://via.placeholder.com/150?text=Item'}" alt="${item.title}" class="cart-thumb" onerror="this.src='https://via.placeholder.com/150?text=Item'">
+            </a>
             <div class="cart-details">
-              <div class="cart-title">${item.title}</div>
-              <div class="cart-subtext">${item.brand} ${item.size ? '• Size ' + item.size : ''}</div>
+              <a href="${directLink}" target="_blank" rel="noopener noreferrer" class="cart-title" style="text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${item.title}
+              </a>
+              <div class="cart-subtext">
+                <span style="font-weight: 600; color: var(--accent-rose);">${item.brand || 'Retailer'}</span>
+                ${item.size ? ' • Size ' + item.size : ''}
+                ${item.color ? ' • ' + item.color : ''}
+              </div>
               <div class="cart-price">$${p.toFixed(2)}</div>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="pill-btn" style="padding: 6px 12px; font-size: 11px;">Buy ↗</a>
-              <button class="btn-text-subtle" onclick="toggleCart('${item.id}')">Remove</button>
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0;">
+              <a href="${directLink}" target="_blank" rel="noopener noreferrer" class="btn-luxury btn-shop" style="padding: 8px 14px; font-size: 12px; border-radius: var(--radius-pill); white-space: nowrap;">
+                Buy Item ↗
+              </a>
+              <button class="btn-text-subtle" style="font-size: 11px;" onclick="toggleCart('${item.id}')">Remove</button>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    async function autoFetchUrlMetadata() {
-      const urlInput = document.getElementById('itemUrl');
-      const fetchBtn = document.getElementById('fetchUrlBtn');
-      const rawUrl = urlInput.value.trim();
-
-      if (!rawUrl) {
-        alert('Please paste a product URL first.');
-        return;
-      }
-
-      fetchBtn.textContent = 'Fetching...';
-      fetchBtn.disabled = true;
-
-      try {
-        let parsedDomain = '';
-        try {
-          const u = new URL(rawUrl);
-          const parts = u.hostname.replace('www.', '').split('.');
-          if (parts.length > 0) {
-            parsedDomain = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-          }
-        } catch(e) {}
-
-        if (parsedDomain && !document.getElementById('itemBrand').value) {
-          document.getElementById('itemBrand').value = parsedDomain;
-        }
-
-        const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(rawUrl)}`);
-        const json = await response.json();
-
-        if (json.status === 'success' && json.data) {
-          const d = json.data;
-          if (d.title && !document.getElementById('itemTitle').value) {
-            let cleanTitle = d.title.split('|')[0].split('-')[0].trim();
-            document.getElementById('itemTitle').value = cleanTitle;
-          }
-          if (d.publisher && !document.getElementById('itemBrand').value) {
-            document.getElementById('itemBrand').value = d.publisher;
-          }
-          if (d.image && d.image.url && !document.getElementById('itemImage').value) {
-            document.getElementById('itemImage').value = d.image.url;
-          }
-          showToast('Detected product details!');
-        } else {
-          showToast('Domain identified. Complete details below.');
-        }
-      } catch (err) {
-        showToast('Store identified. Fill in remaining details.');
-      } finally {
-        fetchBtn.textContent = 'Auto-Fill';
-        fetchBtn.disabled = false;
-      }
-    }
-
     function openAddModal() {
       document.getElementById('editItemId').value = '';
       document.getElementById('itemModalTitle').textContent = 'Add New Wish';
       document.getElementById('itemForm').reset();
+      document.getElementById('autoPreviewBox').style.display = 'none';
       pickModalRating(5);
       updateFormSubcategories();
       document.getElementById('itemModalOverlay').classList.add('active');
@@ -1575,6 +1989,7 @@
       document.getElementById('itemSize').value = item.size || '';
       document.getElementById('itemColor').value = item.color || '';
       pickModalRating(item.desire || 5);
+      updateModalPreviewCard();
 
       document.getElementById('itemModalOverlay').classList.add('active');
     }
@@ -1588,7 +2003,7 @@
       const editId = document.getElementById('editItemId').value;
 
       const title = document.getElementById('itemTitle').value.trim();
-      const url = document.getElementById('itemUrl').value.trim();
+      const url = formatExactProductUrl(document.getElementById('itemUrl').value.trim());
       const brand = document.getElementById('itemBrand').value.trim();
       const image = document.getElementById('itemImage').value.trim();
       const price = parseFloat(document.getElementById('itemPrice').value);
