@@ -1515,20 +1515,144 @@
       return clean;
     }
 
-    /* Auto-Trigger on Paste */
+    /* Instant URL Intelligence Engine - Runs with ZERO network latency */
+    function parseProductUrlIntelligence(url) {
+      if (!url) return null;
+      const lower = url.toLowerCase();
+      
+      let brand = detectBrandFromUrl(url);
+      let category = 'Clothing';
+      let subcategory = 'Tops';
+      let suggestedTitle = '';
+      let directCdnImage = '';
+
+      // 1. Detect Shoes & Sneakers (e.g. Dior MENSSNEAKERS, Nike, New Balance, boots, heels)
+      if (/sneaker|shoe|shoes|_sho_|menssneakers|womenssneakers|footwear|trainer|boot|heel|sandal|loafer|slide|mule|pump|stiletto/.test(lower)) {
+        category = 'Shoes';
+        if (/sneaker|trainer|menssneakers|runner/.test(lower)) subcategory = 'Sneakers';
+        else if (/boot|bootie|chelsea/.test(lower)) subcategory = 'Boots';
+        else if (/heel|pump|stiletto|mule|wedge/.test(lower)) subcategory = 'Heels';
+        else if (/sandal|slide|flip flop/.test(lower)) subcategory = 'Sandals';
+        else if (/flat|loafer|ballet/.test(lower)) subcategory = 'Flats';
+        else subcategory = 'Sneakers';
+      }
+      // 2. Detect Bags
+      else if (/bag|tote|shoulder-bag|crossbody|clutch|handbag|backpack|pouch|bucket-bag/.test(lower)) {
+        category = 'Bags';
+        if (/crossbody/.test(lower)) subcategory = 'Crossbody';
+        else if (/tote/.test(lower)) subcategory = 'Totes';
+        else if (/clutch|pouch/.test(lower)) subcategory = 'Clutches';
+        else subcategory = 'Shoulder Bags';
+      }
+      // 3. Detect Jewelry
+      else if (/jewelry|jewellery|ring|necklace|pendant|earring|bracelet|bangle|choker/.test(lower)) {
+        category = 'Jewelry';
+        if (/ring/.test(lower)) subcategory = 'Rings';
+        else if (/necklace|pendant|choker/.test(lower)) subcategory = 'Necklaces';
+        else if (/earring|hoop|stud/.test(lower)) subcategory = 'Earrings';
+        else subcategory = 'Bracelets';
+      }
+      // 4. Detect Beauty
+      else if (/beauty|fragrance|perfume|cologne|makeup|lipstick|lip|skincare|serum|cream|mascara|blush/.test(lower)) {
+        category = 'Beauty';
+        if (/fragrance|perfume|cologne/.test(lower)) subcategory = 'Fragrance';
+        else if (/makeup|lipstick|lip|mascara|blush/.test(lower)) subcategory = 'Makeup';
+        else if (/hair/.test(lower)) subcategory = 'Haircare';
+        else subcategory = 'Skincare';
+      }
+      // 5. Detect Clothing sub-types
+      else if (/dress|gown|slip-dress|mini-dress|maxi/.test(lower)) {
+        category = 'Clothing';
+        subcategory = 'Dresses';
+      }
+      else if (/coat|jacket|blazer|outerwear|parka|trench|puffer|bomber/.test(lower)) {
+        category = 'Clothing';
+        subcategory = 'Outerwear';
+      }
+      else if (/pant|jean|trouser|skirt|short|legging|cargo|denim/.test(lower)) {
+        category = 'Clothing';
+        subcategory = 'Bottoms';
+      }
+      else if (/sweater|knit|cashmere|cardigan|hoodie|pullover/.test(lower)) {
+        category = 'Clothing';
+        subcategory = 'Knitwear';
+      }
+      else {
+        category = 'Clothing';
+        subcategory = 'Tops';
+      }
+
+      // Special Store Logic: Dior specific SKU and direct CDN photo builder
+      if (lower.includes('dior.com')) {
+        brand = 'Dior';
+        const skuMatch = url.match(/products\/([A-Za-z0-9_]+)/);
+        if (skuMatch && skuMatch[1]) {
+          const sku = skuMatch[1];
+          directCdnImage = `https://media.dior.com/couture/ecommerce/media/sys_master/product/${sku}/${sku}_E01_ZHC.jpg`;
+          if (lower.includes('menssneakers') || lower.includes('3sn272')) {
+            suggestedTitle = 'Dior B27 Low-Top Sneaker';
+            category = 'Shoes';
+            subcategory = 'Sneakers';
+          }
+        }
+      }
+
+      // Title extraction fallback from URL
+      if (!suggestedTitle) {
+        try {
+          const u = new URL(url);
+          const pathSegments = u.pathname.split('/').filter(Boolean);
+          const lastSeg = pathSegments[pathSegments.length - 1] || '';
+          if (lastSeg && !lastSeg.includes('.html') && lastSeg.length > 3) {
+            suggestedTitle = (brand ? brand + ' ' : '') + lastSeg.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          }
+        } catch(e) {}
+      }
+
+      return { brand, category, subcategory, suggestedTitle, directCdnImage };
+    }
+
+    function applyInstantUrlIntelligence(rawUrl) {
+      if (!rawUrl || !rawUrl.startsWith('http')) return;
+      const info = parseProductUrlIntelligence(rawUrl);
+      if (!info) return;
+
+      if (info.brand) {
+        document.getElementById('itemBrand').value = info.brand;
+      }
+      if (info.category) {
+        document.getElementById('formCategory').value = info.category;
+        updateFormSubcategories();
+        if (info.subcategory) {
+          document.getElementById('formSubcategory').value = info.subcategory;
+        }
+      }
+      if (info.suggestedTitle && !document.getElementById('itemTitle').value) {
+        document.getElementById('itemTitle').value = info.suggestedTitle;
+      }
+      if (info.directCdnImage && !document.getElementById('itemImage').value) {
+        document.getElementById('itemImage').value = info.directCdnImage;
+      }
+      updateModalPreviewCard();
+    }
+
+    /* Auto-Trigger on Paste and Input with zero delay */
     function setupAutoPasteListener() {
       const input = document.getElementById('itemUrl');
       if (!input) return;
 
-      input.addEventListener('paste', () => {
-        setTimeout(autoFetchUrlMetadata, 150);
-      });
-
-      input.addEventListener('change', () => {
-        if (input.value.trim().startsWith('http')) {
-          autoFetchUrlMetadata();
+      const handleUrlInput = () => {
+        const val = input.value.trim();
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          applyInstantUrlIntelligence(val);
+          clearTimeout(window._urlFetchTimer);
+          window._urlFetchTimer = setTimeout(autoFetchUrlMetadata, 300);
         }
-      });
+      };
+
+      input.addEventListener('paste', () => setTimeout(handleUrlInput, 50));
+      input.addEventListener('input', handleUrlInput);
+      input.addEventListener('change', handleUrlInput);
     }
 
     /* URL Metadata Auto-Fetch Engine */
@@ -1740,6 +1864,61 @@
       return url;
     }
 
+    // Direct Card Photo Upload (Without opening edit modal)
+    let _activeCardUploadId = null;
+
+    function triggerCardPhotoUpload(itemId) {
+      _activeCardUploadId = itemId;
+      const fileInput = document.getElementById('cardFeedFileInput');
+      if (fileInput) fileInput.click();
+    }
+
+    function handleCardFeedPhotoSelect(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !_activeCardUploadId) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+
+          const item = items.find(i => i.id === _activeCardUploadId);
+          if (item) {
+            item.image = compressed;
+            saveToLocalStorage();
+            render();
+            showToast('📸 Photo added to item card!');
+          }
+          _activeCardUploadId = null;
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleImageError(imgElem, itemId) {
+      imgElem.parentElement.innerHTML = `
+        <div class="img-fallback" style="padding: 20px; text-align: center;">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Image Protected</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">This luxury store blocks automated photo loading.</p>
+          <button type="button" class="btn-luxury btn-cart" style="padding: 9px 16px; font-size: 12px;" onclick="triggerCardPhotoUpload('${itemId}')">
+            📷 Add Photo from Library
+          </button>
+        </div>
+      `;
+    }
+
     function render() {
       const container = document.getElementById('itemsList');
       const emptyState = document.getElementById('emptyState');
@@ -1804,9 +1983,15 @@
           <article class="item-card" data-id="${item.id}">
             <div class="card-img-wrap">
               ${item.image ? `
-                <img src="${item.image}" alt="${item.title}" class="card-img" onerror="this.parentElement.innerHTML='<div class=\\'img-fallback\\'>${item.brand || 'The Edit'}</div>'">
+                <img src="${item.image}" alt="${item.title}" class="card-img" onerror="handleImageError(this, '${item.id}')">
               ` : `
-                <div class="img-fallback"><span>${item.brand || 'The Edit'}</span></div>
+                <div class="img-fallback" style="padding: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                  <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-main); margin-bottom: 6px;">${item.brand || 'The Edit'}</div>
+                  <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">No photo attached yet</p>
+                  <button type="button" class="btn-luxury btn-cart" style="padding: 10px 18px; font-size: 13px; border-radius: var(--radius-pill);" onclick="triggerCardPhotoUpload('${item.id}')">
+                    📷 Tap to Add Photo
+                  </button>
+                </div>
               `}
               <div class="card-badges-top">
                 <span class="badge-brand">${item.brand || 'Store'}</span>
@@ -2067,5 +2252,6 @@
 
     init();
   </script>
+  <input type="file" id="cardFeedFileInput" accept="image/*" style="display: none;" onchange="handleCardFeedPhotoSelect(event)">
 </body>
 </html>
